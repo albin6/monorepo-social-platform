@@ -1,0 +1,35 @@
+# Coturn (TURN) Server Configuration for Social Platform
+
+version: '3.8'
+
+services:
+  coturn:
+    image: instrumentisto/coturn:4.5
+    container_name: social-platform-coturn
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "5349:5349/tcp"
+      - "5349:5349/udp"
+      - "6080:6080/tcp"
+      - "6080:6080/udp"
+      - "6081:6081/tcp"
+      - "6081:6081/udp"
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf
+      - ./users.db:/var/lib/coturn/users.db
+    environment:
+      - COTURN_NO_CLI=1
+    networks:
+      - coturn-network
+    restart: unless-stopped
+    command: [
+      "turnserver",
+      "-c", "/etc/coturn/turnserver.conf",
+      "--userdb", "/var/lib/coturn/users.db",
+      "-v"
+    ]
+
+networks:
+  coturn-network:
+    driver: bridge

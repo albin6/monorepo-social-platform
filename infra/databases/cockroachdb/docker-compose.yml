@@ -1,0 +1,25 @@
+# CockroachDB Configuration for Social Platform
+
+version: '3.8'
+
+services:
+  cockroachdb:
+    image: cockroachdb/cockroach:v23.1.0
+    container_name: social-platform-cockroachdb
+    command: start-single-node --insecure
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+    volumes:
+      - cockroach_data:/cockroach/cockroach-data
+      - ./init-cockroach.sql:/docker-entrypoint-initdb.d/init-cockroach.sql
+    networks:
+      - social-platform-network
+    restart: unless-stopped
+
+volumes:
+  cockroach_data:
+
+networks:
+  social-platform-network:
+    driver: bridge

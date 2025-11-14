@@ -1,0 +1,34 @@
+{
+  "name": "social-platform",
+  "version": "1.0.0",
+  "description": "Social Platform Monorepo with Microservices",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/services/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:services\"",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:services": "concurrently \"npm run dev --workspace=apps/services/auth-service\" \"npm run dev --workspace=apps/services/user-profile-service\" \"npm run dev --workspace=apps/services/chat-service\" \"npm run dev --workspace=apps/services/friend-request-service\" \"npm run dev --workspace=apps/services/notification-service\" \"npm run dev --workspace=apps/services/video-call-signaling-service\" \"npm run dev --workspace=apps/services/websocket-signaling-service\" \"npm run dev --workspace=apps/services/otp-service\"",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "docker:up": "docker-compose -f infra/docker-compose/docker-compose.platform.yml up -d",
+    "docker:down": "docker-compose -f infra/docker-compose/docker-compose.platform.yml down",
+    "docker:logs": "docker-compose -f infra/docker-compose/docker-compose.platform.yml logs -f",
+    "load-test:auth": "k6 run tests/load/auth_test.js",
+    "load-test:chat": "k6 run tests/load/chat_test.js",
+    "load-test:websocket": "k6 run tests/load/websocket_test.js",
+    "perf:monitor": "node scripts/performance-monitor.js",
+    "perf:report": "node scripts/generate-performance-report.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "jest": "^29.0.0",
+    "supertest": "^6.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

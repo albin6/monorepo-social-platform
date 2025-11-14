@@ -1,0 +1,307 @@
+# GitLab CI/CD configuration for Social Platform
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
+.test_template: &test_definition
+  stage: test
+  image: node:18
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+  before_script:
+    - cd apps/services/$SERVICE_NAME
+    - npm ci
+
+.test_template_service:
+  stage: test
+  image: node:18
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+  before_script:
+    - cd apps/services/$SERVICE_NAME
+    - npm ci
+
+# Test jobs for each service
+auth-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "auth-service"
+  script:
+    - npm run lint
+    - npm run test
+
+user-profile-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "user-profile-service"
+  script:
+    - npm run lint
+    - npm run test
+
+websocket-signaling-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "websocket-signaling-service"
+  script:
+    - npm run lint
+    - npm run test
+
+chat-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "chat-service"
+  script:
+    - npm run lint
+    - npm run test
+
+friend-request-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "friend-request-service"
+  script:
+    - npm run lint
+    - npm run test
+
+notification-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "notification-service"
+  script:
+    - npm run lint
+    - npm run test
+
+video-call-signaling-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "video-call-signaling-service"
+  script:
+    - npm run lint
+    - npm run test
+
+otp-service-test:
+  extends: .test_template_service
+  variables:
+    SERVICE_NAME: "otp-service"
+  script:
+    - npm run lint
+    - npm run test
+
+# Build jobs
+build-auth-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/auth-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/auth-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+build-user-profile-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/user-profile-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/user-profile-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+build-websocket-signaling-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/websocket-signaling-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/websocket-signaling-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+build-chat-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/chat-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/chat-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+build-friend-request-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/friend-request-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/friend-request-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+build-notification-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/notification-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/notification-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+build-video-call-signaling-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/video-call-signaling-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/video-call-signaling-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+build-otp-service:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE/otp-service:$CI_COMMIT_SHA
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd apps/services/otp-service
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+    - develop
+
+# Deploy jobs
+deploy-staging:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  before_script:
+    - apt-get update && apt-get install -y gettext
+  script:
+    - export KUBECONFIG_FILE=$(mktemp)
+    - echo "$KUBECONFIG_STAGING" | base64 -d > $KUBECONFIG_FILE
+    - export KUBECONFIG=$KUBECONFIG_FILE
+    - cd infra/k8s/overlays/staging
+    - sed -i "s|\${IMAGE_TAG}|$CI_COMMIT_SHA|g" kustomization.yaml
+    - kubectl kustomize . | kubectl apply -f -
+    - kubectl rollout status deployment/auth-service -n social-platform-staging
+    - kubectl rollout status deployment/user-profile-service -n social-platform-staging
+    - kubectl rollout status deployment/websocket-signaling-service -n social-platform-staging
+    - kubectl rollout status deployment/chat-service -n social-platform-staging
+    - kubectl rollout status deployment/friend-request-service -n social-platform-staging
+    - kubectl rollout status deployment/notification-service -n social-platform-staging
+    - kubectl rollout status deployment/video-call-signaling-service -n social-platform-staging
+    - kubectl rollout status deployment/otp-service -n social-platform-staging
+  environment:
+    name: staging
+    url: https://staging.social-platform.com
+  only:
+    - develop
+
+deploy-production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  before_script:
+    - apt-get update && apt-get install -y gettext
+  script:
+    - export KUBECONFIG_FILE=$(mktemp)
+    - echo "$KUBECONFIG_PRODUCTION" | base64 -d > $KUBECONFIG_FILE
+    - export KUBECONFIG=$KUBECONFIG_FILE
+    - cd infra/k8s/overlays/production
+    - sed -i "s|\${IMAGE_TAG}|$CI_COMMIT_SHA|g" kustomization.yaml
+    - kubectl kustomize . | kubectl apply -f -
+    - kubectl rollout status deployment/auth-service -n social-platform-production
+    - kubectl rollout status deployment/user-profile-service -n social-platform-production
+    - kubectl rollout status deployment/websocket-signaling-service -n social-platform-production
+    - kubectl rollout status deployment/chat-service -n social-platform-production
+    - kubectl rollout status deployment/friend-request-service -n social-platform-production
+    - kubectl rollout status deployment/notification-service -n social-platform-production
+    - kubectl rollout status deployment/video-call-signaling-service -n social-platform-production
+    - kubectl rollout status deployment/otp-service -n social-platform-production
+  environment:
+    name: production
+    url: https://social-platform.com
+  when: manual
+  only:
+    - main
+  environment:
+    name: production
+    action: start

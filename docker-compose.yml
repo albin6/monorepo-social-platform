@@ -1,0 +1,263 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # MongoDB Cluster
+  mongodb-primary:
+    image: mongo:6
+    container_name: social-platform-mongodb-primary
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_primary_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  mongodb-secondary:
+    image: mongo:6
+    container_name: social-platform-mongodb-secondary
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_secondary_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    depends_on:
+      - mongodb-primary
+
+  mongodb-arbiter:
+    image: mongo:6
+    container_name: social-platform-mongodb-arbiter
+    ports:
+      - "27019:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    depends_on:
+      - mongodb-primary
+      - mongodb-secondary
+
+  # Redis Cluster
+  redis-master:
+    image: redis:7-alpine
+    container_name: social-platform-redis-master
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes", "--cluster-enabled", "yes", "--cluster-config-file", "/nodes.conf", "--cluster-node-timeout", "5000"]
+    volumes:
+      - redis_master_data:/data
+
+  redis-slave:
+    image: redis:7-alpine
+    container_name: social-platform-redis-slave
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--appendonly", "yes", "--slaveof", "redis-master", "6379"]
+    volumes:
+      - redis_slave_data:/data
+    depends_on:
+      - redis-master
+
+  # Kafka Cluster
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: social-platform-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: social-platform-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 16
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./apps/services/auth-service
+      dockerfile: Dockerfile
+    container_name: social-platform-auth-service
+    depends_on:
+      - mongodb-primary
+      - redis-master
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-auth?authSource=admin
+      - REDIS_URL=redis://redis-master:6379
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+      - JWT_EXPIRES_IN=1h
+    env_file:
+      - ./apps/services/auth-service/.env
+
+  # User Profile Service
+  user-profile-service:
+    build:
+      context: ./apps/services/user-profile-service
+      dockerfile: Dockerfile
+    container_name: social-platform-user-profile-service
+    depends_on:
+      - mongodb-primary
+      - redis-master
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-user-profile?authSource=admin
+      - REDIS_URL=redis://redis-master:6379
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+    env_file:
+      - ./apps/services/user-profile-service/.env
+
+  # WebSocket Signaling Service
+  websocket-signaling-service:
+    build:
+      context: ./apps/services/websocket-signaling-service
+      dockerfile: Dockerfile
+    container_name: social-platform-websocket-signaling-service
+    depends_on:
+      - redis-master
+    ports:
+      - "3003:3003"
+    environment:
+      - REDIS_URL=redis://redis-master:6379
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+    env_file:
+      - ./apps/services/websocket-signaling-service/.env
+
+  # Chat Service
+  chat-service:
+    build:
+      context: ./apps/services/chat-service
+      dockerfile: Dockerfile
+    container_name: social-platform-chat-service
+    depends_on:
+      - mongodb-primary
+      - redis-master
+      - kafka
+    ports:
+      - "3004:3004"
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-chat?authSource=admin
+      - REDIS_URL=redis://redis-master:6379
+      - KAFKA_BROKERS=kafka:9092
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+    env_file:
+      - ./apps/services/chat-service/.env
+
+  # Friend Request Service
+  friend-request-service:
+    build:
+      context: ./apps/services/friend-request-service
+      dockerfile: Dockerfile
+    container_name: social-platform-friend-request-service
+    depends_on:
+      - mongodb-primary
+      - redis-master
+    ports:
+      - "3005:3005"
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-friend-request?authSource=admin
+      - REDIS_URL=redis://redis-master:6379
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+    env_file:
+      - ./apps/services/friend-request-service/.env
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./apps/services/notification-service
+      dockerfile: Dockerfile
+    container_name: social-platform-notification-service
+    depends_on:
+      - mongodb-primary
+      - redis-master
+    ports:
+      - "3006:3006"
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-notification?authSource=admin
+      - REDIS_URL=redis://redis-master:6379
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+    env_file:
+      - ./apps/services/notification-service/.env
+
+  # Video Call Signaling Service
+  video-call-service:
+    build:
+      context: ./apps/services/video-call-signaling-service
+      dockerfile: Dockerfile
+    container_name: social-platform-video-call-service
+    depends_on:
+      - redis-master
+    ports:
+      - "3007:3007"
+    environment:
+      - REDIS_URL=redis://redis-master:6379
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+    env_file:
+      - ./apps/services/video-call-signaling-service/.env
+
+  # OTP Service
+  otp-service:
+    build:
+      context: ./apps/services/otp-service
+      dockerfile: Dockerfile
+    container_name: social-platform-otp-service
+    depends_on:
+      - redis-master
+    ports:
+      - "3008:3008"
+    environment:
+      - REDIS_URL=redis://redis-master:6379
+      - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
+    env_file:
+      - ./apps/services/otp-service/.env
+
+  # Frontend Web Application
+  web-frontend:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: social-platform-web-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - user-profile-service
+      - chat-service
+      - notification-service
+      - websocket-signaling-service
+    environment:
+      - REACT_APP_AUTH_SERVICE_URL=http://auth-service:3001
+      - REACT_APP_USER_SERVICE_URL=http://user-profile-service:3002
+      - REACT_APP_CHAT_SERVICE_URL=http://chat-service:3004
+      - REACT_APP_FRIEND_REQUEST_SERVICE_URL=http://friend-request-service:3005
+      - REACT_APP_NOTIFICATION_SERVICE_URL=http://notification-service:3006
+      - REACT_APP_VIDEO_CALL_SERVICE_URL=http://video-call-service:3007
+      - REACT_APP_WEBSOCKET_URL=ws://websocket-signaling-service:3003
+
+volumes:
+  mongodb_primary_data:
+  mongodb_secondary_data:
+  mongodb_arbiter_data:
+  redis_master_data:
+  redis_slave_data:

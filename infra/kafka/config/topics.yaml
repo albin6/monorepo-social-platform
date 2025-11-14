@@ -1,0 +1,59 @@
+# Kafka Topics Configuration for Social Platform
+
+# Define topics for the social platform services
+topics:
+  - name: "user-events"
+    partitions: 6
+    replication-factor: 3
+    config:
+      retention.ms: 604800000  # 7 days
+      cleanup.policy: "compact,delete"
+
+  - name: "chat-messages"
+    partitions: 6
+    replication-factor: 3
+    config:
+      retention.ms: 2592000000  # 30 days
+      cleanup.policy: "delete"
+
+  - name: "notifications"
+    partitions: 3
+    replication-factor: 3
+    config:
+      retention.ms: 604800000  # 7 days
+      cleanup.policy: "delete"
+
+  - name: "friend-requests"
+    partitions: 3
+    replication-factor: 3
+    config:
+      retention.ms: 604800000  # 7 days
+      cleanup.policy: "delete"
+
+  - name: "video-call-events"
+    partitions: 3
+    replication-factor: 3
+    config:
+      retention.ms: 86400000  # 1 day
+      cleanup.policy: "delete"
+
+  - name: "otp-events"
+    partitions: 3
+    replication-factor: 3
+    config:
+      retention.ms: 3600000  # 1 hour
+      cleanup.policy: "delete"
+
+  - name: "websocket-events"
+    partitions: 6
+    replication-factor: 3
+    config:
+      retention.ms: 3600000  # 1 hour
+      cleanup.policy: "delete"
+
+  - name: "profile-updates"
+    partitions: 3
+    replication-factor: 3
+    config:
+      retention.ms: 604800000  # 7 days
+      cleanup.policy: "compact,delete"

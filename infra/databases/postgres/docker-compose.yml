@@ -1,0 +1,27 @@
+# PostgreSQL Configuration for Social Platform
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: social-platform-postgres
+    environment:
+      POSTGRES_DB: social_platform
+      POSTGRES_USER: social_user
+      POSTGRES_PASSWORD: social_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - social-platform-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  social-platform-network:
+    driver: bridge

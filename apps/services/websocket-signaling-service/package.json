@@ -1,0 +1,40 @@
+{
+  "name": "websocket-signaling-service",
+  "version": "1.0.0",
+  "description": "WebSocket signaling service for real-time communication",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
+  },
+  "keywords": [
+    "websocket",
+    "real-time",
+    "signaling",
+    "social-platform"
+  ],
+  "author": "Social Platform Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.0",
+    "express": "^4.18.0",
+    "express-rate-limit": "^6.8.0",
+    "express-validator": "^7.0.0",
+    "helmet": "^7.0.0",
+    "joi": "^17.9.0",
+    "mongoose": "^7.4.0",
+    "redis": "^4.6.0",
+    "socket.io": "^4.7.0",
+    "socket.io-redis": "^6.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.45.0",
+    "jest": "^29.6.0",
+    "nodemon": "^3.0.0",
+    "supertest": "^6.3.0"
+  }
+}

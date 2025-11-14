@@ -1,0 +1,117 @@
+# S3 Configuration for Social Platform Services
+
+# Bucket configuration
+buckets:
+  avatars:
+    name: "social-platform-avatars"
+    region: "us-east-1"
+    public_read: true
+    encryption: "AES256"
+    versioning: true
+    cors:
+      - allowed_origins:
+          - "https://social-platform.com"
+          - "https://www.social-platform.com"
+        allowed_methods:
+          - "GET"
+          - "POST"
+          - "PUT"
+        allowed_headers:
+          - "*"
+        max_age_seconds: 3000
+
+  chat_attachments:
+    name: "social-platform-chat-attachments"
+    region: "us-east-1"
+    public_read: false
+    encryption: "AES256"
+    versioning: true
+    cors:
+      - allowed_origins:
+          - "https://social-platform.com"
+        allowed_methods:
+          - "GET"
+          - "POST"
+          - "PUT"
+        allowed_headers:
+          - "*"
+        max_age_seconds: 3000
+
+  video_recordings:
+    name: "social-platform-video-recordings"
+    region: "us-west-2"
+    public_read: false
+    encryption: "AES256"
+    versioning: true
+    lifecycle_rules:
+      - id: "transition-to-ia"
+        status: "Enabled"
+        transition:
+          days: 30
+          storage_class: "STANDARD_IA"
+      - id: "transition-to-glacier"
+        status: "Enabled"
+        transition:
+          days: 90
+          storage_class: "GLACIER"
+      - id: "delete-after-1-year"
+        status: "Enabled"
+        expiration:
+          days: 365
+
+# S3 client configuration
+s3_client:
+  region: "us-east-1"
+  max_retries: 3
+  connect_timeout: 60
+  read_timeout: 120
+  multipart_threshold: 10485760  # 10MB
+  multipart_chunksize: 10485760  # 10MB
+
+# Presigned URL configuration
+presigned_urls:
+  expiration:
+    avatars: 3600  # 1 hour
+    chat_attachments: 3600  # 1 hour
+    video_recordings: 7200  # 2 hours
+
+# Bucket policies
+policies:
+  avatars:
+    statement:
+      - effect: "Allow"
+        principal: "*"
+        action: "s3:GetObject"
+        resource: "arn:aws:s3:::social-platform-avatars/*"
+      - effect: "Allow"
+        principal:
+          service: "cloudfront.amazonaws.com"
+        action: "s3:GetObject"
+        resource: "arn:aws:s3:::social-platform-avatars/*"
+
+  chat_attachments:
+    statement:
+      - effect: "Allow"
+        principal:
+          AWS: "arn:aws:iam::ACCOUNT-ID:role/social-platform-roles"
+        action:
+          - "s3:GetObject"
+          - "s3:PutObject"
+          - "s3:DeleteObject"
+        resource: "arn:aws:s3:::social-platform-chat-attachments/*"
+
+# CloudFront configuration for performance
+cloudfront:
+  avatars_distribution:
+    comment: "Social Platform Avatars Distribution"
+    default_cache_behavior:
+      target_origin_id: "S3-social-platform-avatars"
+      viewer_protocol_policy: "redirect-to-https"
+      min_ttl: 0
+      default_ttl: 3600
+      max_ttl: 86400
+    restrictions:
+      geo_restriction:
+        restriction_type: "none"
+    enabled: true
+    is_ipv6_enabled: true
