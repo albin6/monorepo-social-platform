@@ -1,4 +1,4 @@
-# Use the official Node.js runtime as the base image
+# Use Node.js 18 as the base image
 FROM node:18-alpine
 
 # Set the working directory in the container
@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install --only=production
+RUN npm install
 
 # Copy the rest of the application code
 COPY . .
 
-# Expose the port the app runs on
-EXPOSE 3001
+# Expose port 3000 (default for Create React App)
+EXPOSE 3000
 
-# Define the command to run the application
+# Start the application
 CMD ["npm", "start"]

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWebSocket } from '../../contexts/WebSocketContext';
+import friendService from '../../services/friendService';
 import '../../styles/index.css';
 
 const FriendRequestsPage = () => {
@@ -12,45 +13,24 @@ const FriendRequestsPage = () => {
   const [activeTab, setActiveTab] = useState('incoming'); // 'incoming' or 'outgoing'
   const [loading, setLoading] = useState(false);
 
-  // Mock data fetching - in a real app, this would call the friend request service
+  // Fetch real friend requests from the backend service
   const fetchFriendRequests = async () => {
     setLoading(true);
     try {
-      // Simulating API call to friend request service
-      const mockIncoming = [
-        {
-          id: 'req_1',
-          senderId: 'user_101',
-          senderName: 'John Doe',
-          senderAvatar: 'https://via.placeholder.com/50/0000FF/808080?Text=JD',
-          message: 'Hey, I would like to add you as a friend!',
-          timestamp: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
-        },
-        {
-          id: 'req_2',
-          senderId: 'user_202',
-          senderName: 'Jane Smith',
-          senderAvatar: 'https://via.placeholder.com/50/FF0000/FFFFFF?Text=JS',
-          message: 'Long time no see! Add me back?',
-          timestamp: new Date(Date.now() - 86400000).toISOString() // 1 day ago
-        }
-      ];
-      
-      const mockOutgoing = [
-        {
-          id: 'req_3',
-          receiverId: 'user_303',
-          receiverName: 'Bob Johnson',
-          receiverAvatar: 'https://via.placeholder.com/50/00FF00/000000?Text=BJ',
-          status: 'pending',
-          timestamp: new Date(Date.now() - 1800000).toISOString() // 30 minutes ago
-        }
-      ];
-      
-      setIncomingRequests(mockIncoming);
-      setOutgoingRequests(mockOutgoing);
+      // Fetch incoming requests
+      const incomingResponse = await friendService.getFriendRequests('received');
+      setIncomingRequests(incomingResponse.requests || []);
+
+      // Fetch outgoing requests
+      const outgoingResponse = await friendService.getFriendRequests('sent');
+      setOutgoingRequests(outgoingResponse.requests || []);
     } catch (error) {
       console.error('Error fetching friend requests:', error);
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        type: 'error',
+        message: 'Failed to load friend requests. Please try again later.'
+      }]);
     } finally {
       setLoading(false);
     }
@@ -59,20 +39,20 @@ const FriendRequestsPage = () => {
   // Handle accepting a friend request
   const handleAccept = async (requestId) => {
     try {
-      // In a real app, this would call the friend request service
-      // const response = await friendRequestService.respondToRequest(requestId, 'accept');
-      
+      // Call the friend request service to accept the request
+      const response = await friendService.respondToRequest(requestId, 'accept');
+
       // Update the UI to remove the request
-      setIncomingRequests(prev => prev.filter(req => req.id !== requestId));
-      
+      setIncomingRequests(prev => prev.filter(req => req._id !== requestId));
+
       // Show success notification
       setNotifications(prev => [...prev, {
         id: Date.now(),
         type: 'success',
         message: 'Friend request accepted!'
       }]);
-      
-      // In a real app, emit WebSocket event
+
+      // Emit WebSocket event for real-time updates
       if (socket) {
         socket.emit('friend_request_action', {
           requestId,
@@ -93,20 +73,20 @@ const FriendRequestsPage = () => {
   // Handle rejecting a friend request
   const handleReject = async (requestId) => {
     try {
-      // In a real app, this would call the friend request service
-      // const response = await friendRequestService.respondToRequest(requestId, 'reject');
-      
+      // Call the friend request service to reject the request
+      const response = await friendService.respondToRequest(requestId, 'reject');
+
       // Update the UI to remove the request
-      setIncomingRequests(prev => prev.filter(req => req.id !== requestId));
-      
+      setIncomingRequests(prev => prev.filter(req => req._id !== requestId));
+
       // Show notification
       setNotifications(prev => [...prev, {
         id: Date.now(),
         type: 'info',
         message: 'Friend request rejected'
       }]);
-      
-      // In a real app, emit WebSocket event
+
+      // Emit WebSocket event for real-time updates
       if (socket) {
         socket.emit('friend_request_action', {
           requestId,
@@ -127,12 +107,12 @@ const FriendRequestsPage = () => {
   // Handle cancelling a sent friend request
   const handleCancel = async (requestId) => {
     try {
-      // In a real app, this would call the friend request service
-      // const response = await friendRequestService.respondToRequest(requestId, 'cancel');
-      
+      // Call the friend request service to cancel the request
+      const response = await friendService.respondToRequest(requestId, 'cancel');
+
       // Update the UI to remove the request
-      setOutgoingRequests(prev => prev.filter(req => req.id !== requestId));
-      
+      setOutgoingRequests(prev => prev.filter(req => req._id !== requestId));
+
       // Show notification
       setNotifications(prev => [...prev, {
         id: Date.now(),
@@ -285,43 +265,43 @@ const FriendRequestsPage = () => {
             ) : (
               <div>
                 {incomingRequests.map(request => (
-                  <div key={request.id} className="friend-request-item" style={{ 
-                    border: '1px solid #eee', 
-                    borderRadius: '8px', 
-                    padding: '15px', 
-                    marginBottom: '15px' 
+                  <div key={request._id || request.id} className="friend-request-item" style={{
+                    border: '1px solid #eee',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    marginBottom: '15px'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                      <img 
-                        src={request.senderAvatar} 
-                        alt={request.senderName} 
+                      <img
+                        src={request.senderId?.profilePicture || request.senderAvatar || 'https://via.placeholder.com/50/0000FF/808080?Text=U'}
+                        alt={request.senderId?.username || request.senderName}
                         style={{ width: '50px', height: '50px', borderRadius: '50%', marginRight: '15px' }}
                       />
                       <div>
-                        <h3 style={{ margin: '0 0 5px 0' }}>{request.senderName}</h3>
+                        <h3 style={{ margin: '0 0 5px 0' }}>{request.senderId?.username || request.senderName}</h3>
                         <p style={{ margin: '0', fontSize: '0.9em', color: '#666' }}>
-                          {new Date(request.timestamp).toLocaleString()}
+                          {new Date(request.createdAt || request.timestamp).toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    
+
                     {request.message && (
                       <p style={{ margin: '10px 0', fontStyle: 'italic', color: '#555' }}>
                         "{request.message}"
                       </p>
                     )}
-                    
+
                     <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                      <button 
+                      <button
                         className="button button-primary"
-                        onClick={() => handleAccept(request.id)}
+                        onClick={() => handleAccept(request._id || request.id)}
                         style={{ flex: 1 }}
                       >
                         Accept
                       </button>
-                      <button 
+                      <button
                         className="button button-secondary"
-                        onClick={() => handleReject(request.id)}
+                        onClick={() => handleReject(request._id || request.id)}
                         style={{ flex: 1 }}
                       >
                         Reject
@@ -342,29 +322,29 @@ const FriendRequestsPage = () => {
             ) : (
               <div>
                 {outgoingRequests.map(request => (
-                  <div key={request.id} className="friend-request-item" style={{ 
-                    border: '1px solid #eee', 
-                    borderRadius: '8px', 
-                    padding: '15px', 
-                    marginBottom: '15px' 
+                  <div key={request._id || request.id} className="friend-request-item" style={{
+                    border: '1px solid #eee',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    marginBottom: '15px'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-                      <img 
-                        src={request.receiverAvatar} 
-                        alt={request.receiverName} 
+                      <img
+                        src={request.receiverId?.profilePicture || request.receiverAvatar || 'https://via.placeholder.com/50/0000FF/808080?Text=U'}
+                        alt={request.receiverId?.username || request.receiverName}
                         style={{ width: '50px', height: '50px', borderRadius: '50%', marginRight: '15px' }}
                       />
                       <div>
-                        <h3 style={{ margin: '0 0 5px 0' }}>{request.receiverName}</h3>
+                        <h3 style={{ margin: '0 0 5px 0' }}>{request.receiverId?.username || request.receiverName}</h3>
                         <p style={{ margin: '0', fontSize: '0.9em', color: '#666' }}>
-                          Request sent • {new Date(request.timestamp).toLocaleString()}
+                          Request sent • {new Date(request.createdAt || request.timestamp).toLocaleString()}
                         </p>
-                        <span style={{ 
-                          display: 'inline-block', 
-                          padding: '2px 8px', 
-                          borderRadius: '12px', 
-                          backgroundColor: '#17a2b8', 
-                          color: 'white', 
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          backgroundColor: '#17a2b8',
+                          color: 'white',
                           fontSize: '0.8em',
                           marginTop: '5px'
                         }}>
@@ -372,10 +352,10 @@ const FriendRequestsPage = () => {
                         </span>
                       </div>
                     </div>
-                    
-                    <button 
+
+                    <button
                       className="button button-secondary"
-                      onClick={() => handleCancel(request.id)}
+                      onClick={() => handleCancel(request._id || request.id)}
                       style={{ marginTop: '10px' }}
                     >
                       Cancel Request

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
+import userDiscoveryService from '../../services/userDiscoveryService';
+import friendService from '../../services/friendService';
 import '../styles/index.css';
 
 const UserDiscoveryPage = () => {
@@ -25,31 +27,18 @@ const UserDiscoveryPage = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // In a real app, this would call the user profile service
-      // const response = await api.get('/user-profile/search', { params: filters });
-      // For now, using mock data
-      const mockUsers = Array.from({ length: 20 }, (_, i) => ({
-        id: `user_${i + 1}`,
-        username: `user${i + 1}`,
-        firstName: `First${i + 1}`,
-        lastName: `Last${i + 1}`,
-        bio: `This is a sample bio for user ${i + 1}`,
-        age: 20 + (i % 30),
-        gender: ['male', 'female', 'other'][i % 3],
-        profilePicture: `https://via.placeholder.com/100/0000FF/808080?Text=Avatar${i + 1}`,
-        lastSeen: new Date(Date.now() - (i * 3600000)).toISOString(),
-        distance: (i * 2.5).toFixed(1)
-      }));
-      
-      setUsers(mockUsers);
-      setPagination({
+      const response = await userDiscoveryService.searchUsers(filters);
+      setUsers(response.users || []);
+      setPagination(response.pagination || {
         page: filters.page,
         limit: filters.limit,
-        total: 200, // Mock total
-        pages: 10   // Mock pages
+        total: 0,
+        pages: 0
       });
     } catch (error) {
       console.error('Error fetching users:', error);
+      // Show an error message to the user
+      // In a real application, you'd use a toast notification or similar
     } finally {
       setLoading(false);
     }
@@ -186,10 +175,32 @@ const UserDiscoveryPage = () => {
                   )}
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px' }}>
-                    <button className="button button-secondary" style={{ padding: '5px 10px', fontSize: '0.9em' }}>
+                    <button
+                      className="button button-secondary"
+                      style={{ padding: '5px 10px', fontSize: '0.9em' }}
+                      onClick={() => {
+                        // Navigate to user's profile page
+                        // In a real app, this would use react-router to navigate
+                        console.log(`Viewing profile for ${u.username}`);
+                      }}
+                    >
                       View Profile
                     </button>
-                    <button className="button button-primary" style={{ padding: '5px 10px', fontSize: '0.9em' }}>
+                    <button
+                      className="button button-primary"
+                      style={{ padding: '5px 10px', fontSize: '0.9em' }}
+                      onClick={async () => {
+                        try {
+                          // Send friend request using the friend service
+                          const response = await friendService.sendFriendRequest(u._id || u.id);
+                          console.log('Friend request sent:', response);
+                          // Show success notification to user
+                        } catch (error) {
+                          console.error('Error sending friend request:', error);
+                          // Show error notification to user
+                        }
+                      }}
+                    >
                       Send Friend Request
                     </button>
                   </div>

@@ -217,18 +217,19 @@ const getFriendRequests = async (req, res) => {
       // Try to get from cache first
       const cacheKey = `friend_requests:${userId}:${type}`;
       let friendRequests = await redisUtils.getCachedRecentFriendRequests(cacheKey);
-      
+
       if (!friendRequests) {
         // Get from database
         friendRequests = await FriendRequest.find(query)
-          .populate('senderId receiverId', 'username firstName lastName profilePicture')
           .sort({ createdAt: -1 })
           .lean();
-        
-        // Cache the results
-        await redisUtils.cacheRecentFriendRequests(cacheKey, friendRequests);
+
+        // Since we can't populate (senderId/receiverId are strings),
+        // we'll need to enrich the data from the user profile service in a real implementation
+        // For now, return the raw friend request data
+        // In a real implementation, you would call the user profile service to get user details
       }
-      
+
       res.json({ requests: friendRequests, type });
     } catch (verifyError) {
       if (verifyError.name === 'TokenExpiredError') {

@@ -1,56 +1,30 @@
 # docker-compose.yml
-version: '3.8'
 
 services:
-  # MongoDB Cluster
-  mongodb-primary:
+  # MongoDB
+  mongodb:
     image: mongo:6
-    container_name: social-platform-mongodb-primary
+    container_name: social-platform-mongodb
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_primary_data:/data/db
+      - mongodb_data:/data/db
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=password
-    command: ["--replSet", "rs0", "--bind_ip_all"]
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 10s
       retries: 5
 
-  mongodb-secondary:
-    image: mongo:6
-    container_name: social-platform-mongodb-secondary
-    ports:
-      - "27018:27017"
-    volumes:
-      - mongodb_secondary_data:/data/db
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
-    command: ["--replSet", "rs0", "--bind_ip_all"]
-    depends_on:
-      - mongodb-primary
-
-  mongodb-arbiter:
-    image: mongo:6
-    container_name: social-platform-mongodb-arbiter
-    ports:
-      - "27019:27017"
-    command: ["--replSet", "rs0", "--bind_ip_all"]
-    depends_on:
-      - mongodb-primary
-      - mongodb-secondary
-
-  # Redis Cluster
+  # Redis Master-Slave
   redis-master:
     image: redis:7-alpine
     container_name: social-platform-redis-master
     ports:
       - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes", "--cluster-enabled", "yes", "--cluster-config-file", "/nodes.conf", "--cluster-node-timeout", "5000"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "redispassword"]
     volumes:
       - redis_master_data:/data
 
@@ -59,7 +33,7 @@ services:
     container_name: social-platform-redis-slave
     ports:
       - "6380:6379"
-    command: ["redis-server", "--appendonly", "yes", "--slaveof", "redis-master", "6379"]
+    command: ["redis-server", "--appendonly", "yes", "--slaveof", "redis-master", "6379", "--masterauth", "redispassword"]
     volumes:
       - redis_slave_data:/data
     depends_on:
@@ -90,6 +64,8 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_NUM_PARTITIONS: 16
       KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker
+      KAFKA_CONTROLLER_QUORUM_VOTERS: ""
 
   # Auth Service
   auth-service:
@@ -98,12 +74,12 @@ services:
       dockerfile: Dockerfile
     container_name: social-platform-auth-service
     depends_on:
-      - mongodb-primary
+      - mongodb
       - redis-master
     ports:
       - "3001:3001"
     environment:
-      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-auth?authSource=admin
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/social-platform-auth?authSource=admin
       - REDIS_URL=redis://redis-master:6379
       - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
       - JWT_EXPIRES_IN=1h
@@ -117,12 +93,12 @@ services:
       dockerfile: Dockerfile
     container_name: social-platform-user-profile-service
     depends_on:
-      - mongodb-primary
+      - mongodb
       - redis-master
     ports:
       - "3002:3002"
     environment:
-      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-user-profile?authSource=admin
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/social-platform-user-profile?authSource=admin
       - REDIS_URL=redis://redis-master:6379
       - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
     env_file:
@@ -151,13 +127,13 @@ services:
       dockerfile: Dockerfile
     container_name: social-platform-chat-service
     depends_on:
-      - mongodb-primary
+      - mongodb
       - redis-master
       - kafka
     ports:
       - "3004:3004"
     environment:
-      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-chat?authSource=admin
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/social-platform-chat?authSource=admin
       - REDIS_URL=redis://redis-master:6379
       - KAFKA_BROKERS=kafka:9092
       - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
@@ -171,12 +147,12 @@ services:
       dockerfile: Dockerfile
     container_name: social-platform-friend-request-service
     depends_on:
-      - mongodb-primary
+      - mongodb
       - redis-master
     ports:
       - "3005:3005"
     environment:
-      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-friend-request?authSource=admin
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/social-platform-friend-request?authSource=admin
       - REDIS_URL=redis://redis-master:6379
       - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
     env_file:
@@ -189,12 +165,12 @@ services:
       dockerfile: Dockerfile
     container_name: social-platform-notification-service
     depends_on:
-      - mongodb-primary
+      - mongodb
       - redis-master
     ports:
       - "3006:3006"
     environment:
-      - MONGODB_URI=mongodb://admin:password@mongodb-primary:27017/social-platform-notification?authSource=admin
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/social-platform-notification?authSource=admin
       - REDIS_URL=redis://redis-master:6379
       - JWT_SECRET=your-very-secure-jwt-secret-key-change-in-production
     env_file:
@@ -256,8 +232,6 @@ services:
       - REACT_APP_WEBSOCKET_URL=ws://websocket-signaling-service:3003
 
 volumes:
-  mongodb_primary_data:
-  mongodb_secondary_data:
-  mongodb_arbiter_data:
+  mongodb_data:
   redis_master_data:
   redis_slave_data:
